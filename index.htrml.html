@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lemi's Beer World</title>
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root { --amber:#C8762A; --amber-light:#E8A84A; --dark:#0D0A04; --cream:#F5EDD8; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'DM Mono',monospace; background:var(--dark); color:var(--cream); min-height:100vh; overflow-x:hidden; cursor:none; transition:background 0.4s,color 0.4s; }
+  body.light { background:#fff8ee; color:#1A1208; }
+
+  #bubbleCanvas { position:fixed; inset:0; pointer-events:none; z-index:0; }
+  .above { position:relative; z-index:1; }
+
+  #finger { position:fixed; pointer-events:none; z-index:9999; font-size:2rem; display:none; transform-origin:center center; will-change:transform,left,top,font-size; }
+  .order-popup { position:fixed; pointer-events:none; z-index:9998; font-family:'Bangers',cursive; font-size:1.5rem; letter-spacing:0.05em; color:var(--amber-light); white-space:nowrap; text-shadow:0 2px 12px rgba(0,0,0,0.7); animation:popUp 1.5s ease-out forwards; transform:translate(-50%,0); }
+  @keyframes popUp { 0%{opacity:0;transform:translate(-50%,0) scale(0.4);} 20%{opacity:1;transform:translate(-50%,-30px) scale(1.15);} 60%{opacity:1;transform:translate(-50%,-55px) scale(1);} 100%{opacity:0;transform:translate(-50%,-90px) scale(0.85);} }
+
+  /* TOP RIGHT CONTROLS */
+  .top-controls { position:fixed; top:1.2rem; right:1.2rem; display:flex; gap:8px; z-index:100; }
+  .top-btn { background:rgba(200,118,42,0.12); border:1px solid rgba(200,118,42,0.35); color:var(--amber-light); font-family:'DM Mono',monospace; font-size:11px; letter-spacing:0.1em; padding:8px 14px; cursor:none; border-radius:30px; transition:all 0.3s; }
+  .top-btn:hover { background:rgba(200,118,42,0.28); }
+
+  header { text-align:center; padding:4rem 1rem 2rem; }
+  .header-inner { display:inline-block; padding:2rem 3rem 1.5rem; border:1px solid rgba(200,118,42,0.25); border-radius:16px; background:rgba(0,0,0,0.4); backdrop-filter:blur(8px); max-width:90vw; }
+  body.light .header-inner { background:rgba(255,255,255,0.75); }
+  .badge { display:inline-block; background:var(--amber); color:#0D0A04; font-size:10px; letter-spacing:0.2em; text-transform:uppercase; padding:4px 14px; border-radius:20px; margin-bottom:1rem; font-weight:500; }
+  h1 { font-family:'Bangers',cursive; font-size:clamp(3.5rem,11vw,8rem); letter-spacing:0.06em; background:linear-gradient(160deg,#FFD580 0%,#E8A84A 40%,#C8762A 80%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; line-height:1; filter:drop-shadow(0 4px 24px rgba(200,118,42,0.35)); }
+  .subtitle { font-size:12px; color:rgba(200,118,42,0.55); margin-top:0.5rem; letter-spacing:0.12em; }
+  .hint { display:block; margin-top:0.6rem; font-size:11px; color:rgba(200,118,42,0.4); letter-spacing:0.08em; }
+
+  /* ABOUT SECTION */
+  .about-section { max-width:760px; margin:1rem auto 3rem; padding:0 1.5rem; }
+  .about-card { background:rgba(0,0,0,0.35); backdrop-filter:blur(6px); border:1px solid rgba(200,118,42,0.2); border-radius:20px; padding:2rem; display:flex; gap:1.5rem; align-items:center; flex-wrap:wrap; }
+  body.light .about-card { background:rgba(255,255,255,0.7); }
+  .about-avatar { width:80px; height:80px; border-radius:50%; background:linear-gradient(135deg,#E8A84A,#C8762A); display:flex; align-items:center; justify-content:center; font-size:2.5rem; flex-shrink:0; box-shadow:0 6px 20px rgba(200,118,42,0.3); }
+  .about-text { flex:1; min-width:200px; }
+  .about-name { font-family:'Bangers',cursive; font-size:1.8rem; color:var(--amber-light); letter-spacing:0.1em; }
+  .about-bio { font-size:13px; line-height:1.7; opacity:0.8; margin-top:0.3rem; }
+
+  /* RANDOM BEER BUTTON */
+  .random-section { text-align:center; margin:2rem 0; }
+  .random-btn { background:linear-gradient(135deg,#E8A84A,#C8762A); color:#0D0A04; font-family:'Bangers',cursive; font-size:1.3rem; letter-spacing:0.1em; padding:14px 36px; border:none; border-radius:40px; cursor:none; box-shadow:0 6px 24px rgba(200,118,42,0.4); transition:transform 0.2s, box-shadow 0.2s; }
+  .random-btn:hover { transform:translateY(-3px); box-shadow:0 10px 32px rgba(200,118,42,0.55); }
+  .random-btn:active { transform:translateY(-1px); }
+
+  .section-title { text-align:center; font-family:'Bangers',cursive; font-size:1.6rem; letter-spacing:0.15em; color:var(--amber-light); margin:2.5rem 0 1.2rem; opacity:0.7; }
+
+  /* BEER GRID */
+  .beers-grid { max-width:980px; margin:0 auto 3rem; padding:0 1.5rem; display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:1.5rem; }
+
+  .beer-card { border-radius:20px; padding:1.5rem 1rem 1.2rem; display:flex; flex-direction:column; align-items:center; gap:0.6rem; border:1.5px solid transparent; transition:transform 0.28s,box-shadow 0.28s,border-color 0.28s; cursor:none; opacity:0; animation:fadeUp 0.5s ease forwards; position:relative; overflow:hidden; backdrop-filter:blur(6px); }
+  .beer-card::before { content:''; position:absolute; inset:0; border-radius:20px; opacity:0.08; transition:opacity 0.3s; }
+  .beer-card:hover { transform:translateY(-8px) scale(1.04); }
+  .beer-card:hover::before { opacity:0.18; }
+  .beer-card.highlight-random { animation:randomPulse 1.5s ease 3, fadeUp 0.5s ease forwards; }
+  @keyframes randomPulse { 0%,100%{transform:scale(1);box-shadow:0 0 0 rgba(232,168,74,0);} 50%{transform:scale(1.1);box-shadow:0 0 40px rgba(232,168,74,0.6);} }
+
+  .beer-card.guinness   { background:rgba(10,8,6,0.75);    border-color:rgba(240,230,210,0.25); } .beer-card.guinness::before   { background:#F5EDD8; } .beer-card.guinness:hover   { box-shadow:0 16px 48px rgba(240,230,200,0.2);  border-color:rgba(240,230,210,0.55); }
+  .beer-card.peja       { background:rgba(10,40,15,0.7);   border-color:rgba(50,180,80,0.3);   } .beer-card.peja::before       { background:#22c55e; } .beer-card.peja:hover       { box-shadow:0 16px 48px rgba(34,197,94,0.22);  border-color:rgba(50,180,80,0.65);  }
+  .beer-card.peroni     { background:rgba(40,8,8,0.7);     border-color:rgba(220,50,50,0.3);   } .beer-card.peroni::before     { background:#dc2626; } .beer-card.peroni:hover     { box-shadow:0 16px 48px rgba(220,50,50,0.22);  border-color:rgba(220,50,50,0.65);  }
+  .beer-card.paulaner   { background:rgba(40,28,8,0.7);    border-color:rgba(200,150,60,0.3);  } .beer-card.paulaner::before   { background:#b07830; } .beer-card.paulaner:hover   { box-shadow:0 16px 48px rgba(180,130,50,0.22); border-color:rgba(200,150,60,0.65); }
+  .beer-card.krombacher { background:rgba(5,20,10,0.7);    border-color:rgba(30,140,70,0.3);   } .beer-card.krombacher::before { background:#15803d; } .beer-card.krombacher:hover { box-shadow:0 16px 48px rgba(21,128,61,0.22);  border-color:rgba(30,140,70,0.65);  }
+  .beer-card.corona     { background:rgba(30,25,5,0.7);    border-color:rgba(220,190,50,0.3);  } .beer-card.corona::before     { background:#eab308; } .beer-card.corona:hover     { box-shadow:0 16px 48px rgba(234,179,8,0.22);  border-color:rgba(220,190,50,0.65); }
+  .beer-card.heineken   { background:rgba(5,25,8,0.7);     border-color:rgba(22,163,74,0.3);   } .beer-card.heineken::before   { background:#16a34a; } .beer-card.heineken:hover   { box-shadow:0 16px 48px rgba(22,163,74,0.22);  border-color:rgba(22,163,74,0.65);  }
+  .beer-card.stella     { background:rgba(5,12,35,0.7);    border-color:rgba(59,130,246,0.3);  } .beer-card.stella::before     { background:#3b82f6; } .beer-card.stella:hover     { box-shadow:0 16px 48px rgba(59,130,246,0.22); border-color:rgba(59,130,246,0.65); }
+  .beer-card.asahi      { background:rgba(30,30,30,0.7);   border-color:rgba(200,200,200,0.25);} .beer-card.asahi::before      { background:#e5e7eb; } .beer-card.asahi:hover      { box-shadow:0 16px 48px rgba(200,200,200,0.18); border-color:rgba(200,200,200,0.55);}
+  .beer-card.modelo     { background:rgba(30,15,2,0.7);    border-color:rgba(210,140,30,0.3);  } .beer-card.modelo::before     { background:#d97706; } .beer-card.modelo:hover     { box-shadow:0 16px 48px rgba(217,119,6,0.22);  border-color:rgba(210,140,30,0.65); }
+  .beer-card.efes       { background:rgba(20,15,5,0.7);    border-color:rgba(180,140,40,0.3);  } .beer-card.efes::before       { background:#ca8a04; } .beer-card.efes:hover       { box-shadow:0 16px 48px rgba(202,138,4,0.22);  border-color:rgba(180,140,40,0.65); }
+  .beer-card.tsingtao   { background:rgba(5,20,35,0.7);    border-color:rgba(30,100,200,0.3);  } .beer-card.tsingtao::before   { background:#1d4ed8; } .beer-card.tsingtao:hover   { box-shadow:0 16px 48px rgba(29,78,216,0.22);  border-color:rgba(30,100,200,0.65); }
+  .beer-card.pilsner    { background:rgba(20,8,2,0.7);     border-color:rgba(220,140,40,0.3);  } .beer-card.pilsner::before    { background:#d97706; } .beer-card.pilsner:hover    { box-shadow:0 16px 48px rgba(217,119,6,0.22);  border-color:rgba(220,140,40,0.65); }
+  .beer-card.carlsberg  { background:rgba(5,18,30,0.7);    border-color:rgba(20,90,180,0.3);   } .beer-card.carlsberg::before  { background:#1d4ed8; } .beer-card.carlsberg:hover  { box-shadow:0 16px 48px rgba(29,78,216,0.22);  border-color:rgba(20,90,180,0.65); }
+  .beer-card.estrella   { background:rgba(30,15,5,0.7);    border-color:rgba(220,150,40,0.3);  } .beer-card.estrella::before   { background:#d97706; } .beer-card.estrella:hover   { box-shadow:0 16px 48px rgba(217,119,6,0.22);  border-color:rgba(220,150,40,0.65); }
+
+  /* favorite heart */
+  .fav-btn { position:absolute; top:10px; right:10px; background:none; border:none; font-size:1rem; cursor:none; opacity:0.3; transition:opacity 0.2s, transform 0.2s; z-index:5; }
+  .fav-btn:hover { opacity:1; transform:scale(1.2); }
+  .fav-btn.faved { opacity:1; }
+
+  /* rating */
+  .rating { display:flex; gap:6px; margin-top:0.3rem; align-items:center; }
+  .rate-btn { background:none; border:none; cursor:none; font-size:0.9rem; opacity:0.4; transition:opacity 0.2s, transform 0.2s; }
+  .rate-btn:hover { opacity:1; transform:scale(1.2); }
+  .rate-btn.active-up { opacity:1; color:#22c55e; }
+  .rate-btn.active-down { opacity:1; color:#ef4444; }
+  .rate-count { font-size:9px; opacity:0.5; letter-spacing:0.1em; }
+
+  .beer-glass { width:78px; height:96px; flex-shrink:0; filter:drop-shadow(0 4px 8px rgba(0,0,0,0.3)); }
+  .beer-name  { font-family:'Bangers',cursive; font-size:1.1rem; letter-spacing:0.1em; text-align:center; line-height:1.1; }
+  .beer-flag  { font-size:1.4rem; line-height:1; }
+  .beer-style { font-size:9px; letter-spacing:0.12em; opacity:0.45; text-align:center; border:1px solid currentColor; padding:2px 8px; border-radius:20px; }
+
+  /* MAP SECTION */
+  .map-section { max-width:980px; margin:1rem auto 3rem; padding:0 1.5rem; }
+  .map-wrap { background:rgba(0,0,0,0.35); backdrop-filter:blur(6px); border:1px solid rgba(200,118,42,0.2); border-radius:20px; padding:1.5rem; }
+  body.light .map-wrap { background:rgba(255,255,255,0.7); }
+  .world-map { width:100%; height:auto; }
+  .map-dot { fill:var(--amber-light); cursor:none; transition:r 0.2s; }
+  .map-dot:hover { fill:#FFD580; }
+  .map-tooltip { position:absolute; background:rgba(15,11,5,0.95); color:var(--amber-light); padding:4px 10px; border-radius:6px; font-size:11px; pointer-events:none; opacity:0; transition:opacity 0.15s; border:1px solid rgba(200,118,42,0.4); white-space:nowrap; z-index:200; }
+
+  /* FAVORITES SECTION */
+  .favs-section { max-width:980px; margin:1rem auto 3rem; padding:0 1.5rem; min-height:60px; }
+  .favs-empty { text-align:center; font-size:12px; opacity:0.4; padding:1.5rem; letter-spacing:0.1em; }
+  .favs-list { display:flex; gap:0.6rem; flex-wrap:wrap; justify-content:center; }
+  .fav-chip { background:rgba(200,118,42,0.12); border:1px solid rgba(200,118,42,0.3); border-radius:20px; padding:6px 14px; font-size:11px; color:var(--amber-light); cursor:none; transition:background 0.2s; display:flex; align-items:center; gap:6px; }
+  .fav-chip:hover { background:rgba(200,118,42,0.25); }
+
+  /* CONTACT SECTION */
+  .contact-section { max-width:760px; margin:2rem auto; padding:0 1.5rem; text-align:center; }
+  .contact-title { font-family:'Bangers',cursive; font-size:1.4rem; letter-spacing:0.15em; color:var(--amber-light); margin-bottom:1rem; opacity:0.7; }
+  .social-links { display:flex; gap:1rem; justify-content:center; flex-wrap:wrap; }
+  .social-link { display:flex; align-items:center; gap:8px; padding:10px 18px; background:rgba(200,118,42,0.1); border:1px solid rgba(200,118,42,0.3); border-radius:30px; color:var(--cream); font-size:12px; letter-spacing:0.08em; cursor:none; transition:all 0.25s; text-decoration:none; }
+  body.light .social-link { color:#1A1208; }
+  .social-link:hover { background:var(--amber); color:#0D0A04; transform:translateY(-2px); }
+  .social-icon { font-size:1.2rem; }
+
+  /* MODAL */
+  .modal-overlay { position:fixed; inset:0; z-index:500; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); opacity:0; pointer-events:none; transition:opacity 0.35s; }
+  .modal-overlay.open { opacity:1; pointer-events:all; }
+  .modal { background:#0f0b05; border:1px solid rgba(200,118,42,0.3); border-radius:20px; padding:2rem; max-width:700px; width:90vw; max-height:88vh; overflow-y:auto; position:relative; transform:translateY(30px) scale(0.96); transition:transform 0.35s; }
+  .modal-overlay.open .modal { transform:translateY(0) scale(1); }
+  body.light .modal { background:#fff8ee; border-color:rgba(200,118,42,0.4); }
+  .modal-close { position:absolute; top:1rem; right:1.2rem; font-size:1.5rem; background:none; border:none; color:var(--amber-light); cursor:none; opacity:0.6; transition:opacity 0.2s; }
+  .modal-close:hover { opacity:1; }
+  .modal-brand { font-family:'Bangers',cursive; font-size:2.5rem; letter-spacing:0.1em; text-align:center; margin-bottom:0.2rem; }
+  .modal-sub { font-size:11px; letter-spacing:0.15em; text-align:center; opacity:0.45; margin-bottom:1.5rem; text-transform:uppercase; }
+  .scene-table-svg { width:100%; max-width:560px; }
+  .modal-info { display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.75rem; margin-top:1.2rem; }
+  .info-pill { background:rgba(200,118,42,0.1); border:1px solid rgba(200,118,42,0.2); border-radius:12px; padding:0.75rem 1rem; text-align:center; }
+  .info-label { font-size:9px; letter-spacing:0.15em; text-transform:uppercase; opacity:0.45; margin-bottom:4px; }
+  .info-val { font-family:'Bangers',cursive; font-size:1.3rem; letter-spacing:0.08em; color:var(--amber-light); }
+
+  footer { text-align:center; padding:2rem; border-top:1px solid rgba(200,118,42,0.15); font-size:11px; color:rgba(200,118,42,0.3); letter-spacing:0.1em; margin-top:2rem; }
+  .footer-tag { font-family:'Bangers',cursive; font-size:1rem; letter-spacing:0.15em; color:var(--amber-light); margin-bottom:0.6rem; opacity:0.6; }
+
+  @keyframes fadeUp { from{opacity:0;transform:translateY(22px);} to{opacity:1;transform:translateY(0);} }
+</style>
+</head>
+<body>
+
+<canvas id="bubbleCanvas"></canvas>
+<div id="finger">☝️</div>
+<div class="map-tooltip" id="mapTooltip"></div>
+
+<div class="top-controls">
+  <button class="top-btn" onclick="toggleSound()" id="soundBtn">🔊 SOUND</button>
+  <button class="top-btn" onclick="toggleTheme()">◐ THEME</button>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <button class="modal-close" onclick="closeModalDirect()">✕</button>
+    <div class="modal-brand" id="modalBrand"></div>
+    <div class="modal-sub" id="modalSub"></div>
+    <svg id="modalSceneSVG" viewBox="0 0 560 320" xmlns="http://www.w3.org/2000/svg" class="scene-table-svg"></svg>
+    <div class="modal-info" id="modalInfo"></div>
+  </div>
+</div>
+
+<div class="above">
+  <header>
+    <div class="header-inner">
+      <h1>Welcome to Lemz.</h1>
+      <p class="subtitle">🍺🍻🍺 &nbsp;&nbsp; LE MI &nbsp;&nbsp; 🍺🍻🍺</p>
+      <p class="subtitle" style="margin-top:0.3rem;font-size:11px;letter-spacing:0.2em;opacity:0.45;">#QaqTKaerit</p>
+      <span class="hint">☝️ click anywhere to order · click a beer to pour it</span>
+    </div>
+  </header>
+
+
+
+  <!-- RANDOM -->
+  <div class="random-section">
+    <button class="random-btn" onclick="pickRandomBeer()">🎲 Pick a Random Beer</button>
+  </div>
+
+  <!-- FAVORITES -->
+  <div class="section-title">⭐ Your Favorites</div>
+  <div class="favs-section" id="favsSection">
+    <div class="favs-empty">Tap the ♡ on any beer to save it here</div>
+  </div>
+
+  <!-- BEERS -->
+  <div class="section-title">🌍 The Lineup</div>
+  <div class="beers-grid" id="beersGrid"></div>
+
+  <!-- MAP -->
+  <div class="section-title">🗺️ Where They Come From</div>
+  <div class="map-section">
+    <div class="map-wrap">
+      <svg class="world-map" viewBox="0 0 1000 500" id="worldMap" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+  </div>
+
+  <!-- CONTACT -->
+  <div class="contact-section">
+    <div class="contact-title">📬 Find Lemi</div>
+    <div class="social-links">
+      <a href="#" class="social-link" onclick="event.preventDefault()"><span class="social-icon">📷</span> Instagram</a>
+      <a href="#" class="social-link" onclick="event.preventDefault()"><span class="social-icon">🐦</span> Twitter</a>
+      <a href="#" class="social-link" onclick="event.preventDefault()"><span class="social-icon">💼</span> LinkedIn</a>
+      <a href="#" class="social-link" onclick="event.preventDefault()"><span class="social-icon">✉️</span> Email</a>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-tag">Stay foamy, my friends 🍺</div>
+    LEMI'S BEER WORLD &nbsp;·&nbsp; DRINK RESPONSIBLY, ORDER IRRESPONSIBLY
+  </footer>
+</div>
+
+<script>
+const beers = [
+  { cls:'guinness',   name:'Guinness',      country:'Ireland',     style:'Dry Stout',   liquid:'#1a1208', foam:'#f5edd8', body:'#0d0a04', label:'#f5edd8', abv:'4.2%', origin:'Dublin',     since:'1759', lat:53.35, lng:-6.26,   flag:'🇮🇪' },
+  { cls:'peja',       name:'Birra Peja',    country:'Albania',     style:'Lager',       liquid:'#c8a832', foam:'#fff8dc', body:'#155224', label:'#22c55e', abv:'4.8%', origin:'Peja',       since:'1971', lat:42.66, lng:20.30,   flag:'🇦🇱' },
+  { cls:'peroni',     name:'Peroni',        country:'Italy',       style:'Pilsner',     liquid:'#e8b84a', foam:'#fffde7', body:'#7f1d1d', label:'#ef4444', abv:'5.1%', origin:'Rome',       since:'1846', lat:41.90, lng:12.49,   flag:'🇮🇹' },
+  { cls:'paulaner',   name:'Paulaner',      country:'Germany',     style:'Hefeweizen',  liquid:'#d4a335', foam:'#fffde7', body:'#78350f', label:'#b07830', abv:'5.5%', origin:'Munich',     since:'1634', lat:48.13, lng:11.58,   flag:'🇩🇪' },
+  { cls:'krombacher', name:'Krombacher',    country:'Germany',     style:'Pils',        liquid:'#c8b850', foam:'#fffff0', body:'#14532d', label:'#16a34a', abv:'4.8%', origin:'Kreuztal',   since:'1803', lat:50.97, lng:7.99,    flag:'🇩🇪' },
+  { cls:'corona',     name:'Corona',        country:'Mexico',      style:'Pale Lager',  liquid:'#f0d060', foam:'#fffef5', body:'#713f12', label:'#eab308', abv:'4.5%', origin:'Mexico City',since:'1925', lat:19.43, lng:-99.13,  flag:'🇲🇽' },
+  { cls:'heineken',   name:'Heineken',      country:'Netherlands', style:'Lager',       liquid:'#c8b840', foam:'#fffff0', body:'#14532d', label:'#16a34a', abv:'5.0%', origin:'Amsterdam',  since:'1873', lat:52.37, lng:4.90,    flag:'🇳🇱' },
+  { cls:'stella',     name:'Stella Artois', country:'Belgium',     style:'Pilsner',     liquid:'#d4b830', foam:'#fffff5', body:'#1e3a8a', label:'#3b82f6', abv:'5.2%', origin:'Leuven',     since:'1926', lat:50.88, lng:4.70,    flag:'🇧🇪' },
+  { cls:'asahi',      name:'Asahi',         country:'Japan',       style:'Super Dry',   liquid:'#e8d070', foam:'#ffffff', body:'#1c1c1c', label:'#e5e7eb', abv:'5.0%', origin:'Osaka',      since:'1889', lat:34.69, lng:135.50,  flag:'🇯🇵' },
+  { cls:'modelo',     name:'Modelo',        country:'Mexico',      style:'Especial',    liquid:'#f0c840', foam:'#fffef0', body:'#92400e', label:'#d97706', abv:'4.4%', origin:'Mexico City',since:'1925', lat:19.43, lng:-99.13,  flag:'🇲🇽' },
+  { cls:'efes',       name:'Efes',          country:'Turkey',      style:'Pilsner',     liquid:'#d4b030', foam:'#fffff5', body:'#713f12', label:'#ca8a04', abv:'5.0%', origin:'Istanbul',   since:'1969', lat:41.01, lng:28.98,   flag:'🇹🇷' },
+  { cls:'tsingtao',   name:'Tsingtao',      country:'China',       style:'Lager',       liquid:'#d0c840', foam:'#fffff0', body:'#1e3a5f', label:'#1d4ed8', abv:'4.7%', origin:'Qingdao',    since:'1903', lat:36.07, lng:120.38,  flag:'🇨🇳' },
+  { cls:'pilsner',    name:'Pilsner Urquell',country:'Czech Republic',style:'Pilsner',  liquid:'#d8a830', foam:'#fffff0', body:'#7c2d12', label:'#dc2626', abv:'4.4%', origin:'Plzeň',      since:'1842', lat:49.74, lng:13.37,   flag:'🇨🇿' },
+  { cls:'carlsberg',  name:'Carlsberg',     country:'Denmark',     style:'Pale Lager',  liquid:'#d4c040', foam:'#fffff5', body:'#1e3a5f', label:'#1d4ed8', abv:'5.0%', origin:'Copenhagen', since:'1847', lat:55.67, lng:12.56,   flag:'🇩🇰' },
+  { cls:'estrella',   name:'Estrella Damm', country:'Spain',       style:'Pilsner',     liquid:'#dcb040', foam:'#fffff0', body:'#7c2d12', label:'#d97706', abv:'4.6%', origin:'Barcelona',  since:'1876', lat:41.39, lng:2.17,    flag:'🇪🇸' },
+];
+
+let favorites = [];
+let ratings = {}; // { beerCls: {up:n,down:n,my:'up'|'down'|null} }
+beers.forEach(b => ratings[b.cls] = { up:0, down:0, my:null });
+// seed some random initial ratings for fun
+beers.forEach(b => { ratings[b.cls].up = Math.floor(Math.random()*40)+5; ratings[b.cls].down = Math.floor(Math.random()*8); });
+
+let soundEnabled = true;
+
+/* ---- SOUND: Web Speech "LE MI" ---- */
+function sayLemi() {
+  if (!soundEnabled) return;
+  if (!window.speechSynthesis) return;
+  const phrases = ['LE MI', 'LEMI', 'LE MI', 'LOQKOMANI', 'LE MI'];
+  const text = phrases[Math.floor(Math.random() * phrases.length)];
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 0.75;
+  u.pitch = 0.6;
+  u.volume = 1;
+  // try to pick a deep male voice
+  const voices = window.speechSynthesis.getVoices();
+  const male = voices.find(v => /male|man|guy|david|george|daniel|alex/i.test(v.name));
+  if (male) u.voice = male;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(u);
+}
+
+function playClink() { sayLemi(); }
+function playPour()  { sayLemi(); }
+function playAhh()   {}
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  document.getElementById('soundBtn').textContent = soundEnabled ? '🔊 SOUND' : '🔇 MUTED';
+  if (soundEnabled) sayLemi();
+}
+
+/* --- Auto theme based on time --- */
+function applyAutoTheme() {
+  const hr = new Date().getHours();
+  if (hr >= 7 && hr < 19) document.body.classList.add('light');
+}
+applyAutoTheme();
+let isLight = document.body.classList.contains('light');
+
+/* --- SVG beer glass --- */
+function makeGlassSVG(b, id) {
+  return `<svg class="beer-glass" viewBox="0 0 80 100" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <clipPath id="gc-${id}"><path d="M18 22 Q16 22 16 24 L12 86 Q12 92 18 92 L52 92 Q58 92 58 86 L54 24 Q54 22 52 22 Z"/></clipPath>
+      <linearGradient id="liq-${id}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="${b.liquid}" stop-opacity="0.7"/>
+        <stop offset="0.3" stop-color="${b.liquid}" stop-opacity="1"/>
+        <stop offset="1" stop-color="${b.body}" stop-opacity="0.95"/>
+      </linearGradient>
+      <radialGradient id="foam-${id}" cx="0.5" cy="0.3" r="0.7">
+        <stop offset="0" stop-color="${b.foam}" stop-opacity="1"/>
+        <stop offset="0.7" stop-color="${b.foam}" stop-opacity="0.85"/>
+        <stop offset="1" stop-color="${b.foam}" stop-opacity="0.5"/>
+      </radialGradient>
+    </defs>
+    <path d="M18 22 Q16 22 16 24 L12 86 Q12 92 18 92 L52 92 Q58 92 58 86 L54 24 Q54 22 52 22 Z" fill="${b.body}" opacity="0.55"/>
+    <rect x="10" y="36" width="50" height="58" fill="url(#liq-${id})" clip-path="url(#gc-${id})"/>
+    <circle cx="24" cy="70" r="1.2" fill="${b.foam}" opacity="0.4" clip-path="url(#gc-${id})">
+      <animate attributeName="cy" from="85" to="40" dur="3.2s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0;0.5;0" dur="3.2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="38" cy="75" r="0.9" fill="${b.foam}" opacity="0.4" clip-path="url(#gc-${id})">
+      <animate attributeName="cy" from="85" to="40" dur="4s" repeatCount="indefinite" begin="0.8s"/>
+      <animate attributeName="opacity" values="0;0.5;0" dur="4s" repeatCount="indefinite" begin="0.8s"/>
+    </circle>
+    <circle cx="48" cy="78" r="1" fill="${b.foam}" opacity="0.4" clip-path="url(#gc-${id})">
+      <animate attributeName="cy" from="85" to="40" dur="3.5s" repeatCount="indefinite" begin="1.5s"/>
+      <animate attributeName="opacity" values="0;0.5;0" dur="3.5s" repeatCount="indefinite" begin="1.5s"/>
+    </circle>
+    <rect x="16" y="54" width="42" height="22" rx="2" fill="${b.label}" opacity="0.28" clip-path="url(#gc-${id})"/>
+    <line x1="16" y1="56" x2="58" y2="56" stroke="${b.label}" stroke-width="0.5" opacity="0.5" clip-path="url(#gc-${id})"/>
+    <line x1="16" y1="74" x2="58" y2="74" stroke="${b.label}" stroke-width="0.5" opacity="0.5" clip-path="url(#gc-${id})"/>
+    <ellipse cx="35" cy="36" rx="23" ry="9" fill="url(#foam-${id})"/>
+    <ellipse cx="26" cy="33" rx="9" ry="5" fill="${b.foam}" opacity="0.75"/>
+    <ellipse cx="44" cy="33" rx="8" ry="4.5" fill="${b.foam}" opacity="0.7"/>
+    <ellipse cx="35" cy="31" rx="11" ry="3.5" fill="${b.foam}" opacity="0.6"/>
+    <circle cx="22" cy="34" r="1.5" fill="${b.foam}"/>
+    <circle cx="48" cy="34" r="1.2" fill="${b.foam}"/>
+    <circle cx="38" cy="30" r="1.3" fill="${b.foam}"/>
+    <path d="M21 26 L19 84 Q19 88 22 88 L25 88 L28 26 Z" fill="rgba(255,255,255,0.12)" clip-path="url(#gc-${id})"/>
+    <path d="M18 22 Q16 22 16 24 L12 86 Q12 92 18 92 L52 92 Q58 92 58 86 L54 24 Q54 22 52 22 Z" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+    <ellipse cx="35" cy="22" rx="17" ry="2" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+    <path d="M58 32 Q74 32 74 50 Q74 68 58 68" fill="none" stroke="${b.body}" stroke-width="6" stroke-linecap="round" opacity="0.85"/>
+    <path d="M58 32 Q74 32 74 50 Q74 68 58 68" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2" stroke-linecap="round"/>
+    <ellipse cx="35" cy="94" rx="20" ry="2" fill="rgba(0,0,0,0.4)"/>
+  </svg>`;
+}
+
+/* --- BAR SCENE (with handle pull-down animation) --- */
+function buildScene(b) {
+  const liq = b.liquid, foam = b.foam, bod = b.body, lbl = b.label;
+  const brandShort = b.name.split(' ')[0].toUpperCase();
+  const otherGlasses = [];
+  const positions = [40, 115, 415, 490];
+  positions.forEach((x,i) => {
+    const id = `mg-${i}`;
+    const tilt = (i%2===0)?-1.5:1.5;
+    otherGlasses.push(`
+      <g transform="translate(${x},0) rotate(${tilt} 22 235)">
+        <defs><clipPath id="${id}"><path d="M8 198 Q7 198 7 200 L4 248 Q4 252 8 252 L36 252 Q40 252 40 248 L37 200 Q37 198 36 198 Z"/></clipPath>
+        <linearGradient id="liqx-${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${liq}" stop-opacity="0.85"/><stop offset="1" stop-color="${bod}" stop-opacity="0.95"/></linearGradient></defs>
+        <path d="M8 198 Q7 198 7 200 L4 248 Q4 252 8 252 L36 252 Q40 252 40 248 L37 200 Q37 198 36 198 Z" fill="${bod}" opacity="0.5"/>
+        <rect x="3" y="212" width="38" height="40" fill="url(#liqx-${id})" clip-path="url(#${id})"/>
+        <rect x="7" y="225" width="26" height="14" rx="2" fill="${lbl}" opacity="0.28" clip-path="url(#${id})"/>
+        <ellipse cx="22" cy="211" rx="16" ry="6" fill="${foam}" opacity="0.95"/>
+        <ellipse cx="14" cy="208" rx="6" ry="3.5" fill="${foam}" opacity="0.7"/>
+        <ellipse cx="30" cy="208" rx="5" ry="3" fill="${foam}" opacity="0.6"/>
+        <path d="M10 201 L7 248 L11 248 L14 201 Z" fill="rgba(255,255,255,0.12)" clip-path="url(#${id})"/>
+        <path d="M8 198 Q7 198 7 200 L4 248 Q4 252 8 252 L36 252 Q40 252 40 248 L37 200 Q37 198 36 198 Z" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+        <ellipse cx="22" cy="198" rx="15" ry="1.5" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="0.8"/>
+        <path d="M40 208 Q50 208 50 222 Q50 236 40 236" fill="none" stroke="${bod}" stroke-width="5" stroke-linecap="round" opacity="0.8"/>
+        <ellipse cx="22" cy="253" rx="20" ry="2.5" fill="rgba(0,0,0,0.3)"/>
+      </g>
+    `);
+  });
+
+  return `
+    <defs>
+      <linearGradient id="bar-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(15,8,2,0.8)"/><stop offset="1" stop-color="rgba(40,22,8,0.4)"/></linearGradient>
+      <linearGradient id="bar-top-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6b3a18"/><stop offset="0.3" stop-color="#4a2510"/><stop offset="1" stop-color="#2a1408"/></linearGradient>
+      <linearGradient id="chrome" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4b5563"/><stop offset="0.15" stop-color="#9ca3af"/><stop offset="0.35" stop-color="#e5e7eb"/><stop offset="0.5" stop-color="#f3f4f6"/><stop offset="0.65" stop-color="#e5e7eb"/><stop offset="0.85" stop-color="#6b7280"/><stop offset="1" stop-color="#374151"/></linearGradient>
+      <linearGradient id="liq-main" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${liq}" stop-opacity="0.85"/><stop offset="1" stop-color="${bod}" stop-opacity="0.95"/></linearGradient>
+      <radialGradient id="amber-glow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="${lbl}" stop-opacity="0.15"/><stop offset="1" stop-color="${lbl}" stop-opacity="0"/></radialGradient>
+      <clipPath id="pourGlass"><path d="M254 214 Q252 214 252 216 L249 252 Q249 256 253 256 L307 256 Q311 256 311 252 L308 216 Q308 214 306 214 Z"/></clipPath>
+    </defs>
+    <rect x="0" y="0" width="560" height="260" fill="url(#bar-bg)"/>
+    <rect x="0" y="40" width="560" height="2" fill="rgba(200,118,42,0.2)"/>
+    <rect x="0" y="42" width="560" height="6" fill="rgba(200,118,42,0.08)"/>
+    <g opacity="0.25">
+      <rect x="20" y="10" width="10" height="32" rx="2" fill="${bod}"/><rect x="22" y="6" width="6" height="6" fill="${bod}"/>
+      <rect x="45" y="14" width="10" height="28" rx="2" fill="#4a2510"/><rect x="70" y="8" width="12" height="34" rx="2" fill="#2a1408"/>
+      <rect x="100" y="12" width="9" height="30" rx="2" fill="${bod}"/><rect x="125" y="6" width="11" height="36" rx="2" fill="#4a2510"/>
+      <rect x="450" y="12" width="10" height="30" rx="2" fill="${bod}"/><rect x="478" y="8" width="11" height="34" rx="2" fill="#2a1408"/>
+      <rect x="505" y="14" width="9" height="28" rx="2" fill="#4a2510"/><rect x="530" y="10" width="10" height="32" rx="2" fill="${bod}"/>
+    </g>
+    <ellipse cx="280" cy="120" rx="200" ry="80" fill="url(#amber-glow)"/>
+    <rect x="0" y="252" width="560" height="52" fill="url(#bar-top-grad)"/>
+    <rect x="0" y="252" width="560" height="3" fill="rgba(255,200,100,0.15)"/>
+    <line x1="0" y1="268" x2="560" y2="268" stroke="rgba(0,0,0,0.25)" stroke-width="0.5"/>
+    <line x1="0" y1="278" x2="560" y2="278" stroke="rgba(0,0,0,0.2)" stroke-width="0.5"/>
+    <line x1="0" y1="290" x2="560" y2="290" stroke="rgba(0,0,0,0.25)" stroke-width="0.5"/>
+    <ellipse cx="280" cy="258" rx="36" ry="3" fill="rgba(255,255,255,0.1)"/>
+    <rect x="0" y="304" width="560" height="6" fill="rgba(0,0,0,0.6)"/>
+    <ellipse cx="280" cy="254" rx="38" ry="4" fill="rgba(0,0,0,0.5)"/>
+    <ellipse cx="280" cy="252" rx="36" ry="5" fill="#374151"/>
+    <rect x="245" y="238" width="70" height="14" rx="3" fill="url(#chrome)"/>
+    <rect x="245" y="238" width="70" height="3" fill="rgba(255,255,255,0.4)"/>
+    <rect x="263" y="95" width="34" height="148" fill="url(#chrome)"/>
+    <rect x="260" y="108" width="40" height="6" rx="2" fill="url(#chrome)"/>
+    <rect x="260" y="225" width="40" height="6" rx="2" fill="url(#chrome)"/>
+    <ellipse cx="280" cy="95" rx="20" ry="7" fill="url(#chrome)"/>
+    <ellipse cx="280" cy="92" rx="16" ry="5" fill="#f3f4f6"/>
+    <ellipse cx="280" cy="90" rx="10" ry="3" fill="rgba(255,255,255,0.7)"/>
+    <rect x="265" y="190" width="30" height="18" rx="3" fill="url(#chrome)"/>
+    <rect x="265" y="190" width="30" height="3" fill="rgba(255,255,255,0.4)"/>
+    <rect x="272" y="206" width="16" height="10" rx="2" fill="#374151"/>
+    <ellipse cx="280" cy="216" rx="7" ry="2" fill="#0a0a0a"/>
+
+    <!-- HANDLE: rotates from -12° to -55° (pull down) then back -->
+    <g>
+      <animateTransform attributeName="transform" type="rotate" from="-12 280 145" to="-55 280 145" dur="0.4s" begin="0s" fill="freeze"/>
+      <animateTransform attributeName="transform" type="rotate" from="-55 280 145" to="-12 280 145" dur="0.5s" begin="2.5s" fill="freeze" additive="sum"/>
+      <rect x="276" y="135" width="8" height="18" fill="#374151"/>
+      <ellipse cx="280" cy="135" rx="6" ry="3" fill="#9ca3af"/>
+      <rect x="252" y="68" width="56" height="74" rx="10" fill="${bod}" stroke="${lbl}" stroke-width="2.5"/>
+      <rect x="257" y="73" width="46" height="64" rx="6" fill="${lbl}"/>
+      <rect x="259" y="75" width="42" height="60" rx="4" fill="none" stroke="${bod}" stroke-width="1" opacity="0.6"/>
+      <text x="280" y="92" text-anchor="middle" font-family="Bangers,cursive" font-size="11" fill="${bod}">★</text>
+      <text x="280" y="110" text-anchor="middle" font-family="Bangers,cursive" font-size="13" fill="${bod}" letter-spacing="1">${brandShort.slice(0,9)}</text>
+      <text x="280" y="124" text-anchor="middle" font-family="DM Mono,monospace" font-size="6" fill="${bod}" opacity="0.8" letter-spacing="2">DRAFT</text>
+      <text x="280" y="134" text-anchor="middle" font-family="DM Mono,monospace" font-size="5" fill="${bod}" opacity="0.6">EST. ${b.since}</text>
+      <rect x="255" y="72" width="6" height="66" rx="3" fill="rgba(255,255,255,0.3)"/>
+    </g>
+
+    <path d="M254 214 Q252 214 252 216 L249 252 Q249 256 253 256 L307 256 Q311 256 311 252 L308 216 Q308 214 306 214 Z" fill="${bod}" opacity="0.55"/>
+    <rect x="249" y="252" width="62" height="0" fill="url(#liq-main)" clip-path="url(#pourGlass)">
+      <animate attributeName="y" from="252" to="222" dur="1.8s" begin="0.5s" fill="freeze"/>
+      <animate attributeName="height" from="0" to="34" dur="1.8s" begin="0.5s" fill="freeze"/>
+    </rect>
+    <rect x="253" y="230" width="54" height="18" rx="3" fill="${lbl}" opacity="0" clip-path="url(#pourGlass)"><animate attributeName="opacity" from="0" to="0.28" dur="1s" begin="1.5s" fill="freeze"/></rect>
+    <ellipse cx="280" cy="222" rx="0" ry="0" fill="${foam}" opacity="0.95"><animate attributeName="rx" from="0" to="26" dur="1.2s" begin="1.8s" fill="freeze"/><animate attributeName="ry" from="0" to="8" dur="1.2s" begin="1.8s" fill="freeze"/></ellipse>
+    <ellipse cx="268" cy="220" rx="0" ry="0" fill="${foam}" opacity="0.75"><animate attributeName="rx" from="0" to="10" dur="1.2s" begin="2s" fill="freeze"/><animate attributeName="ry" from="0" to="5" dur="1.2s" begin="2s" fill="freeze"/></ellipse>
+    <ellipse cx="292" cy="219" rx="0" ry="0" fill="${foam}" opacity="0.65"><animate attributeName="rx" from="0" to="8" dur="1.2s" begin="2.1s" fill="freeze"/><animate attributeName="ry" from="0" to="4" dur="1.2s" begin="2.1s" fill="freeze"/></ellipse>
+    <circle cx="265" cy="221" r="0" fill="${foam}"><animate attributeName="r" from="0" to="1.5" dur="0.5s" begin="2.2s" fill="freeze"/></circle>
+    <circle cx="295" cy="220" r="0" fill="${foam}"><animate attributeName="r" from="0" to="1.2" dur="0.5s" begin="2.3s" fill="freeze"/></circle>
+    <path d="M257 217 L254 250 L258 250 L261 217 Z" fill="rgba(255,255,255,0.15)" clip-path="url(#pourGlass)"/>
+    <path d="M254 214 Q252 214 252 216 L249 252 Q249 256 253 256 L307 256 Q311 256 311 252 L308 216 Q308 214 306 214 Z" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+    <ellipse cx="280" cy="214" rx="26" ry="2" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+    <circle cx="263" cy="240" r="1" fill="rgba(255,255,255,0.4)" opacity="0"><animate attributeName="opacity" from="0" to="0.6" dur="0.8s" begin="2.3s" fill="freeze"/></circle>
+    <circle cx="298" cy="244" r="1.1" fill="rgba(255,255,255,0.4)" opacity="0"><animate attributeName="opacity" from="0" to="0.6" dur="0.8s" begin="2.4s" fill="freeze"/></circle>
+    <rect x="277" y="216" width="6" height="0" rx="2" fill="${liq}" opacity="0.95"><animate attributeName="height" from="0" to="32" dur="0.3s" begin="0.4s" fill="freeze"/><animate attributeName="opacity" values="0;0.95;0.95;0.9;0" dur="2.5s" begin="0.4s" fill="freeze"/></rect>
+    <rect x="278.5" y="216" width="2" height="0" fill="rgba(255,255,255,0.55)"><animate attributeName="height" from="0" to="32" dur="0.3s" begin="0.4s" fill="freeze"/><animate attributeName="opacity" values="0;0.6;0.6;0.4;0" dur="2.5s" begin="0.4s" fill="freeze"/></rect>
+    ${otherGlasses.join('')}
+    <ellipse cx="280" cy="259" rx="36" ry="3.5" fill="rgba(0,0,0,0.5)"/>
+    <ellipse cx="280" cy="258" rx="34" ry="2.5" fill="${lbl}" opacity="0.2"/>
+  `;
+}
+
+/* --- RENDER --- */
+function renderBeers() {
+  const grid = document.getElementById('beersGrid');
+  grid.innerHTML = '';
+  beers.forEach((b,i) => {
+    const card = document.createElement('div');
+    card.className = `beer-card ${b.cls}`;
+    card.dataset.cls = b.cls;
+    card.style.animationDelay = (i*0.05)+'s';
+    const r = ratings[b.cls];
+    const isFav = favorites.includes(b.cls);
+    card.innerHTML = `
+      <button class="fav-btn ${isFav?'faved':''}" onclick="event.stopPropagation(); toggleFav('${b.cls}')">${isFav?'❤️':'🤍'}</button>
+      ${makeGlassSVG(b,b.cls)}
+      <div class="beer-name">${b.name}</div>
+      <div class="beer-flag">${b.flag}</div>
+      <div class="beer-style">${b.style}</div>
+      <div class="rating">
+        <button class="rate-btn ${r.my==='up'?'active-up':''}" onclick="event.stopPropagation(); rate('${b.cls}','up')">👍</button>
+        <span class="rate-count">${r.up}</span>
+        <button class="rate-btn ${r.my==='down'?'active-down':''}" onclick="event.stopPropagation(); rate('${b.cls}','down')">👎</button>
+        <span class="rate-count">${r.down}</span>
+      </div>
+    `;
+    card.addEventListener('click', e => { if(!e.target.closest('button')) openModal(b); });
+    grid.appendChild(card);
+  });
+  renderFavs();
+}
+
+function renderFavs() {
+  const wrap = document.getElementById('favsSection');
+  if (favorites.length === 0) {
+    wrap.innerHTML = '<div class="favs-empty">Tap the ♡ on any beer to save it here</div>';
+    return;
+  }
+  wrap.innerHTML = `<div class="favs-list">${favorites.map(cls => {
+    const b = beers.find(x=>x.cls===cls);
+    return `<div class="fav-chip" onclick="const b = beers.find(x=>x.cls==='${cls}'); openModal(b);">🍺 ${b.name}</div>`;
+  }).join('')}</div>`;
+}
+
+function toggleFav(cls) {
+  const i = favorites.indexOf(cls);
+  if (i>-1) favorites.splice(i,1); else { favorites.push(cls); playClink(); }
+  renderBeers();
+}
+
+function rate(cls, type) {
+  const r = ratings[cls];
+  if (r.my === type) { r[type]--; r.my = null; }
+  else { if (r.my) r[r.my]--; r[type]++; r.my = type; }
+  renderBeers();
+}
+
+/* --- MODAL --- */
+function openModal(b) {
+  document.getElementById('modalBrand').textContent = '🍺 '+b.name;
+  document.getElementById('modalSub').textContent = b.country+' · '+b.style;
+  document.getElementById('modalSceneSVG').innerHTML = buildScene(b);
+  document.getElementById('modalInfo').innerHTML = `
+    <div class="info-pill"><div class="info-label">ABV</div><div class="info-val">${b.abv}</div></div>
+    <div class="info-pill"><div class="info-label">Origin</div><div class="info-val">${b.origin}</div></div>
+    <div class="info-pill"><div class="info-label">Since</div><div class="info-val">${b.since}</div></div>
+  `;
+  document.getElementById('modalOverlay').classList.add('open');
+  // sound effects: handle pull, then pouring, then clink+ahh
+  setTimeout(()=>playClink(), 80);
+  setTimeout(()=>playPour(), 500);
+  setTimeout(()=>playAhh(), 2700);
+}
+function closeModal(e) { if(e.target===document.getElementById('modalOverlay')) closeModalDirect(); }
+function closeModalDirect() { document.getElementById('modalOverlay').classList.remove('open'); }
+
+function pickRandomBeer() {
+  playClink();
+  // clear previous highlight
+  document.querySelectorAll('.beer-card').forEach(c=>c.classList.remove('highlight-random'));
+  const pick = beers[Math.floor(Math.random()*beers.length)];
+  const card = document.querySelector(`.beer-card[data-cls="${pick.cls}"]`);
+  if (card) {
+    card.scrollIntoView({behavior:'smooth', block:'center'});
+    setTimeout(()=>card.classList.add('highlight-random'), 400);
+    setTimeout(()=>openModal(pick), 1200);
+  }
+}
+
+/* --- WORLD MAP --- */
+function lngLatToXY(lng, lat) {
+  // simple equirectangular projection (1000x500)
+  const x = (lng + 180) * (1000/360);
+  const y = (90 - lat) * (500/180);
+  return [x, y];
+}
+
+function renderMap() {
+  const svg = document.getElementById('worldMap');
+  // very rough continent silhouettes
+  const continents = `
+    <rect x="0" y="0" width="1000" height="500" fill="rgba(15,11,5,0.3)"/>
+    <!-- ocean grid -->
+    <g stroke="rgba(200,118,42,0.06)" stroke-width="0.5" fill="none">
+      ${Array.from({length:9},(_,i)=>`<line x1="0" y1="${(i+1)*50}" x2="1000" y2="${(i+1)*50}"/>`).join('')}
+      ${Array.from({length:19},(_,i)=>`<line x1="${(i+1)*50}" y1="0" x2="${(i+1)*50}" y2="500"/>`).join('')}
+    </g>
+    <!-- continents simplified -->
+    <g fill="rgba(200,118,42,0.18)" stroke="rgba(200,118,42,0.3)" stroke-width="0.5">
+      <!-- N America -->
+      <path d="M120,90 Q150,70 200,80 L240,110 L260,160 L240,200 L210,210 L180,230 L160,210 L140,180 L120,150 Z"/>
+      <!-- S America -->
+      <path d="M250,260 L280,250 L300,290 L290,360 L260,400 L240,380 L230,330 Z"/>
+      <!-- Europe -->
+      <path d="M470,110 L530,100 L560,130 L540,160 L500,170 L470,150 Z"/>
+      <!-- Africa -->
+      <path d="M490,190 L540,180 L570,220 L580,290 L550,340 L510,350 L490,310 L480,260 Z"/>
+      <!-- Asia -->
+      <path d="M560,90 L700,80 L800,120 L820,180 L780,220 L700,210 L620,180 L580,140 Z"/>
+      <!-- SE Asia -->
+      <path d="M780,230 L820,240 L810,280 L790,270 Z"/>
+      <!-- Australia -->
+      <path d="M830,330 L890,320 L900,360 L860,380 L820,360 Z"/>
+    </g>
+  `;
+  // dots
+  let dots = '';
+  beers.forEach((b,i) => {
+    const [x,y] = lngLatToXY(b.lng, b.lat);
+    dots += `<circle class="map-dot" cx="${x}" cy="${y}" r="6" data-beer="${b.cls}" />
+             <circle cx="${x}" cy="${y}" r="6" fill="none" stroke="${b.label}" stroke-width="1.5" opacity="0.6">
+               <animate attributeName="r" from="6" to="14" dur="2s" begin="${i*0.15}s" repeatCount="indefinite"/>
+               <animate attributeName="opacity" from="0.6" to="0" dur="2s" begin="${i*0.15}s" repeatCount="indefinite"/>
+             </circle>`;
+  });
+  svg.innerHTML = continents + dots;
+  // hook up dot events
+  svg.querySelectorAll('.map-dot').forEach(dot => {
+    const cls = dot.dataset.beer;
+    const b = beers.find(x=>x.cls===cls);
+    dot.addEventListener('mouseenter', e => {
+      const tip = document.getElementById('mapTooltip');
+      tip.textContent = `${b.name} · ${b.origin}`;
+      tip.style.opacity = '1';
+    });
+    dot.addEventListener('mousemove', e => {
+      const tip = document.getElementById('mapTooltip');
+      tip.style.left = (e.clientX+12)+'px'; tip.style.top = (e.clientY+12)+'px';
+    });
+    dot.addEventListener('mouseleave', () => { document.getElementById('mapTooltip').style.opacity='0'; });
+    dot.addEventListener('click', e => { e.stopPropagation(); openModal(b); });
+  });
+}
+
+/* --- BUBBLES --- */
+const canvas = document.getElementById('bubbleCanvas');
+const ctx = canvas.getContext('2d');
+let bubbles=[], frameCount=0;
+function resize(){ canvas.width=window.innerWidth; canvas.height=window.innerHeight; }
+resize(); window.addEventListener('resize',resize);
+function spawnBubble(){ const r=4+Math.random()*14; bubbles.push({x:r+Math.random()*(canvas.width-r*2),y:canvas.height+r*2,r,speed:0.4+Math.random()*1.2,wobbleAmp:0.3+Math.random()*1.1,wobbleFreq:0.01+Math.random()*0.025,wobbleOffset:Math.random()*Math.PI*2,opacity:0.07+Math.random()*0.22,age:0}); }
+for(let i=0;i<30;i++){spawnBubble();bubbles[bubbles.length-1].y=Math.random()*canvas.height;}
+function drawBubbles(){
+  ctx.clearRect(0,0,canvas.width,canvas.height); frameCount++;
+  if(frameCount%38===0) spawnBubble();
+  bubbles=bubbles.filter(b=>b.y+b.r>-10);
+  const base=isLight?'160,100,30':'200,150,60';
+  for(const b of bubbles){
+    b.age++; b.y-=b.speed; b.x+=Math.sin(b.age*b.wobbleFreq+b.wobbleOffset)*b.wobbleAmp;
+    ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(${base},${b.opacity*1.8})`; ctx.lineWidth=1; ctx.stroke();
+    const g=ctx.createRadialGradient(b.x-b.r*0.3,b.y-b.r*0.3,b.r*0.1,b.x,b.y,b.r);
+    g.addColorStop(0,`rgba(255,230,150,${b.opacity*0.7})`); g.addColorStop(1,`rgba(${base},${b.opacity*0.15})`);
+    ctx.fillStyle=g; ctx.fill();
+  }
+  requestAnimationFrame(drawBubbles);
+}
+drawBubbles();
+
+/* --- FINGER --- */
+const finger=document.getElementById('finger');
+let mouseX=0,mouseY=0,isCircling=false;
+const phrases=['LE MI 🍺','LOQKOMANI!','Fuck Lemz 😂','Sen ske pi daj!','MA BRE I MEJI 🍻','LE MI ☝️','LOQKOMANI 🍺','Fuck Lemz 💀'];
+document.addEventListener('mousemove',e=>{ mouseX=e.clientX; mouseY=e.clientY; finger.style.display='block'; if(!isCircling){finger.style.left=mouseX+'px';finger.style.top=mouseY+'px';finger.style.fontSize='2rem';finger.style.transform='translate(-50%,-50%) rotate(180deg)';finger.style.opacity='1';} });
+document.addEventListener('mouseleave',()=>{ finger.style.display='none'; });
+document.addEventListener('click',e=>{
+  if(isCircling||e.target.closest('.beer-card')||e.target.closest('.modal')||e.target.closest('button')||e.target.closest('.fav-chip')||e.target.closest('.map-dot')) return;
+  const cx=e.clientX,cy=e.clientY,rx=38,ry=14,dur=550,start=performance.now();
+  isCircling=true;
+  function anim(now){ const t=(now-start)/dur; if(t>=1){isCircling=false;finger.style.left=mouseX+'px';finger.style.top=mouseY+'px';finger.style.fontSize='2rem';finger.style.transform='translate(-50%,-50%) rotate(180deg)';finger.style.opacity='1';const p=document.createElement('div');p.className='order-popup';p.style.left=cx+'px';p.style.top=(cy-10)+'px';p.textContent=phrases[Math.floor(Math.random()*phrases.length)];document.body.appendChild(p);setTimeout(()=>p.remove(),1600);playPour();return;}
+    const angle=t*Math.PI*2,fx=cx+Math.cos(angle)*rx,fy=cy+Math.sin(angle)*ry,depth=Math.sin(angle),scale=0.75+0.35*((depth+1)/2),op=0.55+0.45*((depth+1)/2),lean=Math.cos(angle+Math.PI/2)*28;
+    finger.style.left=fx+'px';finger.style.top=fy+'px';finger.style.fontSize=(2*scale)+'rem';finger.style.transform=`translate(-50%,-50%) rotate(${180+lean}deg)`;finger.style.opacity=op;requestAnimationFrame(anim);
+  }
+  requestAnimationFrame(anim);
+});
+
+function toggleTheme(){ document.body.classList.toggle('light'); isLight=document.body.classList.contains('light'); }
+
+renderBeers();
+renderMap();
+</script>
+</body>
+</html>
