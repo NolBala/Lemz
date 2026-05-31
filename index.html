@@ -146,7 +146,6 @@
 <div class="map-tooltip" id="mapTooltip"></div>
 
 <div class="top-controls">
-  <button class="top-btn" onclick="toggleSound()" id="soundBtn">🔊 SOUND</button>
   <button class="top-btn" onclick="toggleTheme()">◐ THEME</button>
 </div>
 
@@ -238,35 +237,12 @@ beers.forEach(b => ratings[b.cls] = { up:0, down:0, my:null });
 // seed some random initial ratings for fun
 beers.forEach(b => { ratings[b.cls].up = Math.floor(Math.random()*40)+5; ratings[b.cls].down = Math.floor(Math.random()*8); });
 
-let soundEnabled = true;
 
-/* ---- SOUND: Web Speech "LE MI" ---- */
-function sayLemi() {
-  if (!soundEnabled) return;
-  if (!window.speechSynthesis) return;
-  const phrases = ['LE MI', 'LEMI', 'LE MI', 'LOQKOMANI', 'LE MI'];
-  const text = phrases[Math.floor(Math.random() * phrases.length)];
-  const u = new SpeechSynthesisUtterance(text);
-  u.rate = 0.75;
-  u.pitch = 0.6;
-  u.volume = 1;
-  // try to pick a deep male voice
-  const voices = window.speechSynthesis.getVoices();
-  const male = voices.find(v => /male|man|guy|david|george|daniel|alex/i.test(v.name));
-  if (male) u.voice = male;
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.speak(u);
-}
 
-function playClink() { sayLemi(); }
-function playPour()  { sayLemi(); }
-function playAhh()   {}
 
-function toggleSound() {
-  soundEnabled = !soundEnabled;
-  document.getElementById('soundBtn').textContent = soundEnabled ? '🔊 SOUND' : '🔇 MUTED';
-  if (soundEnabled) sayLemi();
-}
+
+
+
 
 /* --- Auto theme based on time --- */
 function applyAutoTheme() {
@@ -479,7 +455,7 @@ function renderFavs() {
 
 function toggleFav(cls) {
   const i = favorites.indexOf(cls);
-  if (i>-1) favorites.splice(i,1); else { favorites.push(cls); playClink(); }
+  if (i>-1) favorites.splice(i,1); else { favorites.push(cls);  }
   renderBeers();
 }
 
@@ -502,15 +478,15 @@ function openModal(b) {
   `;
   document.getElementById('modalOverlay').classList.add('open');
   // sound effects: handle pull, then pouring, then clink+ahh
-  setTimeout(()=>playClink(), 80);
-  setTimeout(()=>playPour(), 500);
-  setTimeout(()=>playAhh(), 2700);
+  
+  
+  
 }
 function closeModal(e) { if(e.target===document.getElementById('modalOverlay')) closeModalDirect(); }
 function closeModalDirect() { document.getElementById('modalOverlay').classList.remove('open'); }
 
 function pickRandomBeer() {
-  playClink();
+  
   // clear previous highlight
   document.querySelectorAll('.beer-card').forEach(c=>c.classList.remove('highlight-random'));
   const pick = beers[Math.floor(Math.random()*beers.length)];
@@ -615,14 +591,14 @@ drawBubbles();
 /* --- FINGER --- */
 const finger=document.getElementById('finger');
 let mouseX=0,mouseY=0,isCircling=false;
-const phrases=['LE MI 🍺','LOQKOMANI!','Fuck Lemz 😂','Sen ske pi daj!','MA BRE I MEJI 🍻','LE MI ☝️','LOQKOMANI 🍺','Fuck Lemz 💀'];
+
 document.addEventListener('mousemove',e=>{ mouseX=e.clientX; mouseY=e.clientY; finger.style.display='block'; if(!isCircling){finger.style.left=mouseX+'px';finger.style.top=mouseY+'px';finger.style.fontSize='2rem';finger.style.transform='translate(-50%,-50%) rotate(180deg)';finger.style.opacity='1';} });
 document.addEventListener('mouseleave',()=>{ finger.style.display='none'; });
 document.addEventListener('click',e=>{
   if(isCircling||e.target.closest('.beer-card')||e.target.closest('.modal')||e.target.closest('button')||e.target.closest('.fav-chip')||e.target.closest('.map-dot')) return;
   const cx=e.clientX,cy=e.clientY,rx=38,ry=14,dur=550,start=performance.now();
   isCircling=true;
-  function anim(now){ const t=(now-start)/dur; if(t>=1){isCircling=false;finger.style.left=mouseX+'px';finger.style.top=mouseY+'px';finger.style.fontSize='2rem';finger.style.transform='translate(-50%,-50%) rotate(180deg)';finger.style.opacity='1';const p=document.createElement('div');p.className='order-popup';p.style.left=cx+'px';p.style.top=(cy-10)+'px';p.textContent=phrases[Math.floor(Math.random()*phrases.length)];document.body.appendChild(p);setTimeout(()=>p.remove(),1600);playPour();return;}
+  function anim(now){ const t=(now-start)/dur; if(t>=1){isCircling=false;finger.style.left=mouseX+'px';finger.style.top=mouseY+'px';finger.style.fontSize='2rem';finger.style.transform='translate(-50%,-50%) rotate(180deg)';finger.style.opacity='1';const p=document.createElement('div');p.className='order-popup';p.style.left=cx+'px';p.style.top=(cy-10)+'px';p.textContent='🍺 ' + ['LE MI','LOQKOMANI!','Fuck Lemz','Sen ske pi daj!','MA BRE I MEJI'][Math.floor(Math.random()*5)];document.body.appendChild(p);setTimeout(()=>p.remove(),1600);return;}
     const angle=t*Math.PI*2,fx=cx+Math.cos(angle)*rx,fy=cy+Math.sin(angle)*ry,depth=Math.sin(angle),scale=0.75+0.35*((depth+1)/2),op=0.55+0.45*((depth+1)/2),lean=Math.cos(angle+Math.PI/2)*28;
     finger.style.left=fx+'px';finger.style.top=fy+'px';finger.style.fontSize=(2*scale)+'rem';finger.style.transform=`translate(-50%,-50%) rotate(${180+lean}deg)`;finger.style.opacity=op;requestAnimationFrame(anim);
   }
